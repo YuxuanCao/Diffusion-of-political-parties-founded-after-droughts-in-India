@@ -25,7 +25,7 @@ rainfall<-rainfall[rainfall$year>"1950"&rainfall$year<"2000",]
 region<-intersect(unique(total_parties$district),unique(rainfall$district))
 ```
 ```{r}
-#Q1----A
+#1
 # I choose yearly average of SPI during the interval to show level of rainfall
 ## calculate rainfall level of each district in each period
 total_parties$rain<-0
@@ -45,7 +45,7 @@ p<-na.omit(p)
 plot(p$total_parties,p$rain,type ='p' )
 ```
 ```{r}
-##Q1----B 
+##1---B 
 # build relationship of districts
 g<-graph.data.frame(border, directed = FALSE)
 # select those district which have both neighbor information and rain/election information.
@@ -98,7 +98,7 @@ print(summary(model_lag))
 ```
 
 ```{r}
-#Q1--C
+#1--C
 # calculate the number of floods or droughts
 region<-as.character(unique(regression$district))
 p$sum<-0
@@ -125,7 +125,7 @@ summary(model2)
 ```
 
 ```{r}
-## Question 2
+## 2
 new<-district[c(2:21)]
 p<-merge(p,new,by=c("district","year"),all=F)
 model3<-pglm(new_parties~sum+num_years, p, effect = "twoways",model = "within", index = "district",family = "poisson")
@@ -150,7 +150,7 @@ print(paste(s[which.max(s$regression),1],"is more likely to be formed when a dis
 ```
 
 ```{r}
-#Q3
+#3
 ## calculate the number of years of droughts or flooding during last election period(use the average of all neighbors)
 extreme<-p[,1:10]
 extreme$sum_neighbor<-0
@@ -186,7 +186,7 @@ print(summary(model_Q3))
 
 ```
 ```{r}
-#Q4
+#4
 # combine concentration data
 new<-district[c(2,3,23)]
 extreme<-merge(extreme,new,by=c("district","year"),all=F)
@@ -203,7 +203,7 @@ print(summary(model_Q4))
 ## The results that political concentration are not independent on the number of years of droughts or flooding that occur in a district in the interval leading up to the current election, and the number of years of droughts or flooding that occur in its neighboring districts in the interval leading up to the previous election.(both variables are significant). But the current period's extreme weather situation in the district has negative impact on the concerntration, while the last period's situation in its neighbour districts has positive impact on the concerntration.
 ```
 ```{r}
-#Q5
+#5
 new_parties<-read.csv("E:/Fall term/Social Network Analysis/HW3/new_parties_in_each_district_by_candidate.csv",header = TRUE)
 
 ## count the number of new political parties being founded in a district, that have contested an election in a neighboring district in any previous election period.
