@@ -1,0 +1,259 @@
+```{r}
+rm(list = ls(all = TRUE))
+library(igraph)
+library(plm)
+library(pglm)
+```
+```{r}
+## prepare data
+rainfall<-read.csv("E:/Fall term/Social Network Analysis/HW3/rain_information.csv",header = TRUE)
+district<-read.csv("E:/Fall term/Social Network Analysis/HW3/district_information.csv",header = TRUE)
+border<-read.csv("E:/Fall term/Social Network Analysis/HW3/border_information.csv",header = TRUE)
+# clean data
+#delete those region which only have one election infor(could not use it to see trends)
+total_parties<-district[,c(2,3,22)]
+region<-data.frame(unique(total_parties$district))
+for(i in 1:nrow(region)){
+  a<-total_parties[total_parties$district==region[i,1],]
+  if(nrow(a)<2){
+    total_parties<-total_parties[total_parties$district!=region[i,1],]
+  }
+}
+# delete those rainfall info out of election period we concern about
+rainfall<-rainfall[rainfall$year>"1950"&rainfall$year<"2000",]
+# find out those regions which have both election and rainfall information
+region<-intersect(unique(total_parties$district),unique(rainfall$district))
+```
+```{r}
+#Q1----A
+# I choose yearly average of SPI during the interval to show level of rainfall
+## calculate rainfall level of each district in each period
+total_parties$rain<-0
+total_parties$num_years<-0
+for(i in region){
+  a<-total_parties[total_parties$district==i,]
+  for(j in 1:(nrow(a)-1)){
+    b<-rainfall[rainfall$year>a[j,2]&rainfall$year<=a[j+1,2],]
+    b<-b[b$district==i,]
+    k<-which(total_parties$district==i&total_parties$year==a[j+1,2])
+    total_parties[k,4]<-mean(b$spi)
+    total_parties[k,5]<-a[j+1,2]-a[j,2]
+    }
+}
+p<-total_parties[total_parties$rain!=0,]
+p<-na.omit(p)
+plot(p$total_parties,p$rain,type ='p' )
+```
+```{r}
+##Q1----B 
+# build relationship of districts
+g<-graph.data.frame(border, directed = FALSE)
+# select those district which have both neighbor information and rain/election information.
+region1<-unique(V(g)$name)
+newregion<-intersect(region1,region)
+
+## calculate neighbor's rainfall level for each district in region list
+p$neighbor<-0
+for (i in newregion){
+  a<-p[p$district==i,]
+  neigh<-unique(neighbors(g,i))
+  m<-V(g)$name[neigh]
+  y<-p[p$district==m[1],]
+  for(j in m){
+    x<-p[p$district==j,]
+    y<-rbind(x,y)
+    y<-unique(y)
+  }
+  if(nrow(y)!=0){
+      for(k in 1:nrow(a)){
+         q<-y[y$year==a[k,2],]
+         w<-which(p$district==i&p$year==a[k,2])
+         p[w,6]<- mean(q$rain,na.rm = TRUE)
+    }
+  }
+}
+
+## clean the data(delete those NA)
+p<-na.omit(p)
+
+## build lagged value of rainfall and neighbors rainfall
+## for first election year, no related lag data, give it the value==0
+c<-p[1:2213,4]
+p$lag_self<-c(0,c)
+c<-p[1:2213,6]
+p$lag_neigh<-c(0,c)
+for(i in region){
+  index<-which(p$district==i)
+  p$lag_self[index[1]]<-0
+  p$lag_neigh[index[1]]<-0
+}
+
+regression<-p[p$lag_self!=0,]
+
+## build regression
+model_lag<-plm(rain~lag_self+lag_neigh+num_years, regression, effect = "twoways", model = "within", index = "district")
+print(summary(model_lag))
+
+## obviously rainfall level is not independent from two variables(both of two variables are significant)
+```
+
+```{r}
+#Q1--C
+# calculate the number of floods or droughts
+region<-as.character(unique(regression$district))
+p$sum<-0
+for(i in region){
+  a<-total_parties[total_parties$district==i,]
+if(nrow(a)>1){
+  for(j in 1:(nrow(a)-1)){
+      b<-rainfall[rainfall$year>a[j,2]&rainfall$year<=a[j+1,2],]
+      b<-b[b$district==i,]
+      k<-which(p$district==i&p$year==a[j+1,2])
+      p[k,9]<-nrow(b[b$spi>1,])+nrow(b[b$spi<(-1),])
+  } 
+  }
+}
+## build regression model
+regression<-p[p$lag_self!=0,]
+
+## build regression
+model2<-pglm(sum~lag_neigh+lag_self+num_years, regression, effect = "twoways",model = "within", index = "district", family = "poisson")
+summary(model2)
+
+## We could see from the result that estimates of both variables are different, one is positive and the other one is negative.
+## The result illustrates that for a district, its own extreme weather situation in last period has positive impact on the current period's extreme weather, while its neighbours'extreme weather situation in last period has negative impact.(neighbours'extreme weather number increase, the district's extreme weather in this period would decrease.)
+```
+
+```{r}
+## Question 2
+new<-district[c(2:21)]
+p<-merge(p,new,by=c("district","year"),all=F)
+model3<-pglm(new_parties~sum+num_years, p, effect = "twoways",model = "within", index = "district",family = "poisson")
+print(summary(model3))
+
+## significant
+
+s<-data.frame(colnames(p)[c(11:15,17:26)])
+colnames(s)<-party
+s$regression<-0
+for(i in c(11:15,17:26)){
+  m<-pglm(p[,i]~sum+num_years, p, effect = "twoways",model = "within", index = "district",family = "poisson")
+  if(i<16){
+    s[i-10,2]<-m$maximum
+  }else{
+    s[i-11,2]<-m$maximum
+    }
+  
+}
+print(paste(s[which.max(s$regression),1],"is more likely to be formed when a district experiences extreme weather"))
+## farming party is more likely to be formed when a district experiences extreme weather
+```
+
+```{r}
+#Q3
+## calculate the number of years of droughts or flooding during last election period(use the average of all neighbors)
+extreme<-p[,1:10]
+extreme$sum_neighbor<-0
+for (i in newregion){
+  a<-extreme[extreme$district==i,]
+  neigh<-unique(neighbors(g,i))
+  m<-V(g)$name[neigh]
+  y<-extreme[extreme$district==m[1],]
+  for(j in m){
+    x<-extreme[extreme$district==j,]
+    y<-rbind(x,y)
+    y<-unique(y)
+  }
+  if(nrow(y)!=0){
+      for(k in 1:nrow(a)){
+         q<-y[y$year==a[k,2],]
+         w<-which(extreme$district==i&extreme$year==a[k,2])
+         extreme[w,11]<- mean(q$sum,na.rm = TRUE)
+    }
+  }
+}
+extreme$lag_2<-c(0,0,extreme[1:2212,11])
+# since we use the 2 period lag, delete first two period of each district(they don't have lag_2 data)
+for(i in unique(extreme$district)){
+  index<-which(extreme$district==i)
+  extreme$lag_2[index[1]]<--1
+  extreme$lag_2[index[2]]<--1
+}
+# do regression
+regression_Q3<-extreme[extreme$lag_2!=-1,]
+model_Q3<-pglm(new_parties~sum+lag_2+num_years, extreme, effect = "twoways",model = "within", index = "district",family = "poisson")
+print(summary(model_Q3))
+
+```
+```{r}
+#Q4
+# combine concentration data
+new<-district[c(2,3,23)]
+extreme<-merge(extreme,new,by=c("district","year"),all=F)
+# build lag_1 data and delete the first period of each district(they don't have lag_1 data)
+extreme$lag_1<-c(0,extreme[1:2213,11])
+for(i in unique(extreme$district)){
+  index<-which(extreme$district==i)
+  extreme$lag_1[index[1]]<--1
+}
+regression_Q4<-extreme[extreme$lag_1!=-1,]
+model_Q4<-pglm(political_concentration~sum+lag_1+num_years, regression_Q4, effect = "twoways",model = "within", index = "district",family = "poisson")
+print(summary(model_Q4))
+
+## The results that political concentration are not independent on the number of years of droughts or flooding that occur in a district in the interval leading up to the current election, and the number of years of droughts or flooding that occur in its neighboring districts in the interval leading up to the previous election.(both variables are significant). But the current period's extreme weather situation in the district has negative impact on the concerntration, while the last period's situation in its neighbour districts has positive impact on the concerntration.
+```
+```{r}
+#Q5
+new_parties<-read.csv("E:/Fall term/Social Network Analysis/HW3/new_parties_in_each_district_by_candidate.csv",header = TRUE)
+
+## count the number of new political parties being founded in a district, that have contested an election in a neighboring district in any previous election period.
+## then the not_contest is new_parties minus contest parties.
+n_contest<-0
+extreme$contest<-0
+extreme$not_contest<-0
+for(i in newregion){
+  a<-extreme[extreme$district==i,]
+  neigh<-unique(neighbors(g,i))
+  m<-V(g)$name[neigh]
+  y<-new_parties[new_parties$district==m[1],]
+  for(j in m){
+    x<-new_parties[new_parties$district==j,]
+    y<-rbind(x,y)
+    y<-unique(y)
+  }
+  if(nrow(y)!=0){
+      for(k in 2:nrow(a)){
+         t<-new_parties[new_parties$district==i&new_parties$year==a[k,2],]
+         if(nrow(t)>0){
+           for(r in 1:nrow(t)){
+             q<-y[y$year<a[k,2]&y$party_name==t[r,5],]
+             if(nrow(q)>0){
+                if(nrow(q[q$incumbent==1,])>0){
+                  n_contest<-n_contest+1
+                }else if(nrow(q[q$winner==1,])>0){
+                  n_contest<-n_contest+1
+                }  
+               w<-which(extreme$district==i&extreme$year==a[k,2])
+               extreme[w,15]<-n_contest
+               n_contest<-0
+             }
+           }
+         }
+      }
+  }
+}
+extreme$not_contest<-extreme$new_parties-extreme$contest
+regression_Q5<-extreme[extreme$new_parties!=0&extreme$lag_1!=-1,]
+#regression_Q5$contest<-regression_Q5$contest/regression_Q5$new_parties
+#regression_Q5$not_contest<-1-regression_Q5$contest
+model_Q5_1<-pglm(contest~sum+lag_1+num_years, regression_Q5, effect = "twoways",model = "within", index = "district",family = "poisson")
+print(summary(model_Q5_1))
+
+model_Q5_2<-pglm(not_contest~sum+lag_1+num_years, regression_Q5, effect = "twoways",model = "within", index = "district",family = "poisson")
+print(summary(model_Q5_2))
+
+
+## the results show that extreme weather situation variables are not significantly effecting the diffusion of political parties in neighbour district.While, the extreme weather events of neighbour during last period do have positive impact on non-contest new party formed.
+## It may illustrate that diffusion of political organizing may be dependent on extreme weather situation in a district and its neighbours.
+```
+
