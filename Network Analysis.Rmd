@@ -98,7 +98,7 @@ print(summary(model_lag))
 ```
 
 ```{r}
-#1--C
+#1--C: extreme weathers(floods or droughts) calculation
 # calculate the number of floods or droughts
 region<-as.character(unique(regression$district))
 p$sum<-0
