@@ -203,7 +203,7 @@ print(summary(model_Q4))
 ## The results that political concentration are not independent on the number of years of droughts or flooding that occur in a district in the interval leading up to the current election, and the number of years of droughts or flooding that occur in its neighboring districts in the interval leading up to the previous election.(both variables are significant). But the current period's extreme weather situation in the district has negative impact on the concerntration, while the last period's situation in its neighbour districts has positive impact on the concerntration.
 ```
 ```{r}
-#5
+# 5.Diffusion effect
 new_parties<-read.csv("E:/Fall term/Social Network Analysis/HW3/new_parties_in_each_district_by_candidate.csv",header = TRUE)
 
 ## count the number of new political parties being founded in a district, that have contested an election in a neighboring district in any previous election period.
