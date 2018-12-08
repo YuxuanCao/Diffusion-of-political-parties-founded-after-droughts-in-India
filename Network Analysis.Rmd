@@ -186,7 +186,7 @@ print(summary(model_Q3))
 
 ```
 ```{r}
-#4
+# 4.Relationship between extreme weather and political concentration
 # combine concentration data
 new<-district[c(2,3,23)]
 extreme<-merge(extreme,new,by=c("district","year"),all=F)
