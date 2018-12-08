@@ -125,7 +125,7 @@ summary(model2)
 ```
 
 ```{r}
-## 2
+## 2. relationship between extreme weathers and new political party foundings
 new<-district[c(2:21)]
 p<-merge(p,new,by=c("district","year"),all=F)
 model3<-pglm(new_parties~sum+num_years, p, effect = "twoways",model = "within", index = "district",family = "poisson")
