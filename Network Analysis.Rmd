@@ -150,7 +150,7 @@ print(paste(s[which.max(s$regression),1],"is more likely to be formed when a dis
 ```
 
 ```{r}
-#3
+#3. Relationship between extreme weather in one district with political activity in another district(its neighbors).
 ## calculate the number of years of droughts or flooding during last election period(use the average of all neighbors)
 extreme<-p[,1:10]
 extreme$sum_neighbor<-0
